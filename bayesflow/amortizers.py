@@ -196,6 +196,8 @@ class AmortizedPosterior(tf.keras.Model, AmortizedTarget):
             ``parameters``         - the latent model parameters over which a condition density is learned
             ``summary_conditions`` - the conditioning variables that are first passed through a summary network
             ``direct_conditions``  - the conditioning variables that the directly passed to the inference network
+            Optional keys:
+            ``loss_weights``       - one-dimensional array of weights to apply to the KL loss.
         **kwargs   : dict, optional, default: {}
             Additional keyword arguments passed to the networks
             For instance, ``kwargs={'training': True}`` is passed automatically during training.
@@ -223,8 +225,14 @@ class AmortizedPosterior(tf.keras.Model, AmortizedTarget):
         else:
             logpdf = self.latent_dist.log_prob(z)
 
+        ml_loss = -logpdf - log_det_J
+        # Apply weights to loss, if available
+        if input_dict.get("loss_weights") is not None:
+            ml_loss = ml_loss * tf.cast(input_dict.get("loss_weights"), tf.float32)
+
         # Compute and return total loss
-        total_loss = tf.reduce_mean(-logpdf - log_det_J) + sum_loss
+        total_loss = tf.reduce_mean(ml_loss) + sum_loss
+
         return total_loss
 
     def call_loop(self, input_list, return_summary=False, **kwargs):
@@ -366,6 +374,8 @@ class AmortizedPosterior(tf.keras.Model, AmortizedTarget):
         """
 
         # Compute learnable summaries, if appropriate
+        #print("input")
+        #print(input_dict)
         _, conditions = self._compute_summary_condition(
             input_dict.get(DEFAULT_KEYS["summary_conditions"]),
             input_dict.get(DEFAULT_KEYS["direct_conditions"]),
@@ -373,10 +383,17 @@ class AmortizedPosterior(tf.keras.Model, AmortizedTarget):
             **kwargs,
         )
 
+        #print("conditions")
+        #print(conditions)
+
         # Forward pass through the network
         z, log_det_J = self.inference_net.forward(
             input_dict[DEFAULT_KEYS["parameters"]], conditions, training=False, **kwargs
         )
+        #print("z")
+        #print(z)
+        #print("lg_det_J")
+        #print(log_det_J)
 
         # Compute approximate log posterior
         # Case dynamic latent - function of conditions
