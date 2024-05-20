@@ -228,9 +228,11 @@ class AmortizedPosterior(tf.keras.Model, AmortizedTarget):
         # Apply weights to loss, if available
         if input_dict.get("loss_weights") is not None:
             ml_loss = ml_loss * tf.cast(input_dict.get("loss_weights"), tf.float32)
-
-        # Compute and return total loss
-        total_loss = tf.reduce_mean(ml_loss) + sum_loss
+            # Compute and return total loss
+            total_loss = tf.divide(tf.reduce_sum(ml_loss), tf.reduce_sum(tf.cast(input_dict.get("loss_weights"), tf.float32)))
+        else:
+            # Compute and return total loss
+            total_loss = tf.reduce_mean(ml_loss) + sum_loss
 
         return total_loss
 
@@ -373,8 +375,6 @@ class AmortizedPosterior(tf.keras.Model, AmortizedTarget):
         """
 
         # Compute learnable summaries, if appropriate
-        #print("input")
-        #print(input_dict)
         _, conditions = self._compute_summary_condition(
             input_dict.get(DEFAULT_KEYS["summary_conditions"]),
             input_dict.get(DEFAULT_KEYS["direct_conditions"]),
@@ -382,17 +382,10 @@ class AmortizedPosterior(tf.keras.Model, AmortizedTarget):
             **kwargs,
         )
 
-        #print("conditions")
-        #print(conditions)
-
         # Forward pass through the network
         z, log_det_J = self.inference_net.forward(
             input_dict[DEFAULT_KEYS["parameters"]], conditions, training=False, **kwargs
         )
-        #print("z")
-        #print(z)
-        #print("lg_det_J")
-        #print(log_det_J)
 
         # Compute approximate log posterior
         # Case dynamic latent - function of conditions

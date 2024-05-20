@@ -1220,7 +1220,6 @@ class Trainer:
            optional keyword arguments passed to the amortizer
 
         """
-
         if input_dict is None:
             input_dict = self._forward_inference(
                 batch_size, **kwargs.pop("conf_args", {}), **kwargs.pop("model_args", {})

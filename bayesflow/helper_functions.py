@@ -197,6 +197,7 @@ def backprop_step(input_dict, amortizer, optimizer, **kwargs):
                 loss["W.Decay"] = reg
             else:
                 loss = {"Loss": loss, "W.Decay": reg}
+
     # One step backprop and return loss
     gradients = tape.gradient(_loss, amortizer.trainable_variables)
     optimizer.apply_gradients(zip(gradients, amortizer.trainable_variables))
