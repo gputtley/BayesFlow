@@ -225,12 +225,39 @@ class AmortizedPosterior(tf.keras.Model, AmortizedTarget):
             logpdf = self.latent_dist.log_prob(z)
 
         ml_loss = -logpdf - log_det_J
+
         # Apply weights to loss, if available
         if input_dict.get("loss_weights") is not None:
-            ml_loss = ml_loss * tf.cast(input_dict.get("loss_weights"), tf.float32)
-            # Compute and return total loss
-            total_loss = tf.divide(tf.reduce_sum(ml_loss), tf.reduce_sum(tf.cast(input_dict.get("loss_weights"), tf.float32)))
+
+            # Get weights
+            weights = tf.cast(input_dict.get("loss_weights"), tf.float32)
+
+            # Identify positive and negative weight indices
+            positive_weight_mask = tf.greater(weights, 0)
+            negative_weight_mask = tf.less(weights, 0)
+
+            # Get ml_loss values where weights are positive
+            ml_loss_positive = tf.boolean_mask(ml_loss, positive_weight_mask)
+
+            # Find the minimum value of ml_loss where weights are positive
+            min_ml_loss_positive = tf.reduce_max(ml_loss_positive)
+
+            # Set ml_loss to 0 where negative weight and ml_loss < min_ml_loss_positive
+            ml_loss = tf.where(
+                tf.logical_and(negative_weight_mask, tf.greater(ml_loss, min_ml_loss_positive)),
+                tf.zeros_like(ml_loss),  # Set to 0 if condition is met
+                #tf.fill(tf.shape(ml_loss), min_ml_loss_positive),  # Set to min_ml_loss_positive if condition is met for negative weights
+                ml_loss  # Otherwise, keep original value
+            )
+
+            # Weight the loss
+            ml_loss = ml_loss * weights
+
+            # Compute the loss per weight
+            total_loss = tf.divide(tf.reduce_sum(ml_loss), tf.reduce_sum(weights))      
+
         else:
+
             # Compute and return total loss
             total_loss = tf.reduce_mean(ml_loss) + sum_loss
 
