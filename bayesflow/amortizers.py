@@ -294,7 +294,7 @@ class AmortizedPosterior(tf.keras.Model, AmortizedTarget):
         net_out = [tf.concat([o[i] for o in outputs], axis=0) for i in range(len(outputs[0]))]
         return tuple(net_out)
 
-    def sample(self, input_dict, n_samples, to_numpy=True, **kwargs):
+    def sample(self, input_dict, n_samples, to_numpy=True, seed=None, **kwargs):
         """Generates random draws from the approximate posterior given a dictionary with conditonal variables.
 
         Parameters
@@ -331,11 +331,17 @@ class AmortizedPosterior(tf.keras.Model, AmortizedTarget):
         # Case dynamic, assume tensorflow_probability instance, so need to reshape output from
         # (n_samples, n_data_sets, latent_dim) to (n_data_sets, n_samples, latent_dim)
         if self.latent_is_dynamic:
-            z_samples = self.latent_dist(conditions).sample(n_samples)
+            if seed is None:
+                z_samples = self.latent_dist(conditions).sample(n_samples)
+            else:
+                z_samples = self.latent_dist(conditions).sample(n_samples, seed=tf.constant([seed, 456], dtype=tf.int32))
             z_samples = tf.transpose(z_samples, (1, 0, 2))
         # Case _static latent - marginal samples from the specified dist
         else:
-            z_samples = self.latent_dist.sample((n_data_sets, n_samples))
+            if seed is None:
+                z_samples = self.latent_dist.sample((n_data_sets, n_samples))
+            else:
+                z_samples = self.latent_dist.sample((n_data_sets, n_samples), seed=tf.constant([seed, 456], dtype=tf.int32))
 
         # Obtain random draws from the approximate posterior given conditioning variables
         post_samples = self.inference_net.inverse(z_samples, conditions, training=False, **kwargs)
