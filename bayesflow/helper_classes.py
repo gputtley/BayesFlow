@@ -167,7 +167,7 @@ class EarlyStopper:
     """This class will track the total validation loss and trigger an early stopping
     recommendation based on its hyperparameters."""
 
-    def __init__(self, patience=5, tolerance=0.05):
+    def __init__(self, patience=5, tolerance=0.05, wait_till=5):
         """
 
         patience          : int, optional, default: 5
@@ -178,6 +178,7 @@ class EarlyStopper:
         """
 
         self.history = []
+        self.wait_till = wait_till
         self.patience = patience
         self.tolerance = tolerance
         self._patience_counter = 0
@@ -196,7 +197,7 @@ class EarlyStopper:
         """
 
         # Still not enough history, no recommendation
-        if len(self.history) <= 1:
+        if len(self.history) <= self.wait_till:
             return False
 
         # Significant increase according to tolerance, reset patience
